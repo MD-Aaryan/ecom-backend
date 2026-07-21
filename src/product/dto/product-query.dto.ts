@@ -5,7 +5,6 @@ export enum SortBy {
   PRICE_ASC = 'price_asc',
   PRICE_DESC = 'price_desc',
   NEWEST = 'newest',
-  RATING = 'rating',
 }
 
 export class ProductQueryDto {

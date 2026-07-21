@@ -9,10 +9,6 @@ import { AdminLoginDto } from './dto/admin-login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 
-function generateOtp(): string {
-  return randomInt(100000, 999999).toString();
-}
-
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -133,7 +129,7 @@ export class AuthService {
   }
 
   private async createOtp(email: string) {
-    const otp = generateOtp();
+    const otp = randomInt(100000, 999999).toString();
     await this.prisma.otp.create({
       data: {
         email,

@@ -45,6 +45,8 @@ model Category {
   updatedAt     DateTime      @updatedAt
   products      Product[]
   subcategories Subcategory[]
+
+  @@index([name])
 }
 
 model Subcategory {
@@ -77,6 +79,10 @@ model Product {
   orderItems    OrderItem[]
   reviews       Review[]
   wishlistItems WishlistItem[]
+
+  @@index([price])
+  @@index([createdAt])
+  @@index([categoryId])
 }
 
 model ProductVariant {
@@ -100,6 +106,8 @@ model Review {
   product   Product  @relation(fields: [productId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId])
 }
 
 model WishlistItem {
@@ -109,6 +117,8 @@ model WishlistItem {
   user      User     @relation(fields: [userId], references: [id])
   product   Product  @relation(fields: [productId], references: [id])
   createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
 }
 
 model Cart {
@@ -128,6 +138,8 @@ model CartItem {
   quantity  Int      @default(1)
   cart      Cart     @relation(fields: [cartId], references: [id])
   product   Product  @relation(fields: [productId], references: [id])
+
+  @@index([cartId])
 }
 
 model Coupon {
@@ -179,6 +191,10 @@ model Order {
   return         ReturnRequest?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([userId, status])
 }
 
 model OrderItem {
@@ -190,6 +206,8 @@ model OrderItem {
   price     Float
   order     Order    @relation(fields: [orderId], references: [id])
   product   Product  @relation(fields: [productId], references: [id])
+
+  @@index([productId])
 }
 
 model StatusLog {
@@ -229,6 +247,8 @@ model AuditLog {
   oldValue  Json?
   newValue  Json?
   createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
 }
 
 model SupportTicket {

@@ -65,17 +65,16 @@ export class ProductService {
   async findOne(id: number) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { variants: true, category: true, reviews: { select: { rating: true } } },
+      include: { variants: true, category: true },
     });
     if (!product) throw new NotFoundException('Product not found');
 
-    const avgRating =
-      product.reviews.length > 0
-        ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
-        : null;
+    const ratingAgg = await this.prisma.review.aggregate({
+      where: { productId: id },
+      _avg: { rating: true },
+    });
 
-    // ponytail: no review aggregation query, compute inline
-    return { ...product, avgRating };
+    return { ...product, avgRating: ratingAgg._avg.rating ?? null };
   }
 
   async update(id: number, dto: UpdateProductDto, file?: any) {
