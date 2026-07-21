@@ -1,99 +1,123 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# E-Commerce Backend API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS e-commerce backend with Prisma ORM, PostgreSQL, JWT authentication, and comprehensive module architecture.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Tech Stack
 
-## Description
+- **Runtime:** Node.js
+- **Framework:** NestJS 11
+- **ORM:** Prisma 6 + PostgreSQL
+- **Auth:** JWT (passport-jwt) + OTP
+- **Validation:** class-validator + class-transformer
+- **API Docs:** Swagger
+- **Security:** Helmet, CORS, Throttler
+- **File Upload:** Cloudinary
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Prerequisites
 
-## Project setup
+- Node.js >= 18
+- PostgreSQL
+- Cloudinary account (for image upload)
+
+## Setup
 
 ```bash
-$ npm install
+# 1. Clone and install
+npm install
+
+# 2. Copy environment variables
+cp .env.example .env
+
+# 3. Edit .env with your credentials:
+#    DATABASE_URL, JWT_SECRET, ADMIN_EMAIL/PASSWORD, CLOUDINARY_*
+
+# 4. Run database migration
+npx prisma migrate dev
+
+# 5. (Optional) Seed sample data
+npx prisma db seed
+
+# 6. Start development server
+npm run start:dev
 ```
 
-## Compile and run the project
+## Running
 
 ```bash
-# development
-$ npm run start
+# Development
+npm run start:dev
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Production build
+npm run build && npm run start:prod
 ```
 
-## Run tests
+## API Documentation
 
-```bash
-# unit tests
-$ npm run test
+Swagger UI available at `/api/docs` after starting the server.
 
-# e2e tests
-$ npm run test:e2e
+## Modules
 
-# test coverage
-$ npm run test:cov
+| Module | Description |
+|--------|-------------|
+| Auth | Register, login, OTP verification, refresh token, admin login |
+| User | Profile CRUD, role management, admin user list |
+| Category | Category CRUD with soft-delete |
+| Subcategory | Subcategory CRUD with soft-delete |
+| Product | Product CRUD, variants, search/filter, Cloudinary upload |
+| Review | Product reviews (delivered-order gate) |
+| Wishlist | Add/remove/clear wishlist items |
+| Cart | Auto-create cart, add/update/remove items, stock validation |
+| Coupon | Coupon CRUD, validation with discount calculation |
+| Order | Place order (transactional), cancel, track, admin status update |
+| Return | Return request within 7-day window |
+| Admin | Dashboard stats, revenue, top products, low stock alerts |
+| Newsletter | Subscribe/unsubscribe, admin subscriber list |
+| Audit Log | Action logging with admin query interface |
+| Support | Ticket CRUD, replies, assign, priority |
+| Webhook | Webhook registration, HMAC dispatch with retry |
+| Health | Basic + detailed health check (DB ping) |
+| Notifications | Email stub (placeholder) |
+
+## Project Structure
+
+```
+src/
+├── auth/           # Authentication module
+├── user/           # User management
+├── product/        # Product & variant management
+├── category/       # Category management
+├── subcategory/    # Subcategory management
+├── cart/           # Shopping cart
+├── order/          # Order processing
+├── review/         # Product reviews
+├── wishlist/       # Wishlist
+├── coupon/         # Discount coupons
+├── return/         # Return requests
+├── admin/          # Admin dashboard
+├── newsletter/     # Newsletter subscriptions
+├── support/        # Support tickets
+├── webhooks/       # Webhook dispatch
+├── audit-log/      # Audit trail
+├── health/         # Health endpoints
+├── notifications/  # Notification stubs
+├── cloudinary/     # File upload provider
+├── common/         # Shared guards, helpers
+└── prisma/         # Prisma service
 ```
 
-## Deployment
+## Environment Variables
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+See `.env.example` for all required variables. Key ones:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_SECRET` | JWT signing secret |
+| `ADMIN_EMAIL` | Admin login email |
+| `ADMIN_PASSWORD` | Admin login password |
+| `CORS_ORIGIN` | Allowed CORS origin (required for production) |
+| `CLOUDINARY_*` | Cloudinary credentials (for image upload) |
 
-```bash
-$ npm install -g mau
-$ mau deploy
-```
+## Rate Limiting
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Global: **100 requests per 60 seconds** per IP.
