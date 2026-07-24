@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
@@ -19,15 +29,26 @@ export class OrderController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  getUserOrders(@Req() req: any, @Query('page') page?: string, @Query('limit') limit?: string) {
-    return this.orderService.getUserOrders(req.user.userId, page ? +page : undefined, limit ? +limit : undefined);
+  getUserOrders(
+    @Req() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.orderService.getUserOrders(
+      req.user.userId,
+      page ? +page : undefined,
+      limit ? +limit : undefined,
+    );
   }
 
   @Get('all')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   getAllOrders(@Query('page') page?: string, @Query('limit') limit?: string) {
-    return this.orderService.getAllOrders(page ? +page : undefined, limit ? +limit : undefined);
+    return this.orderService.getAllOrders(
+      page ? +page : undefined,
+      limit ? +limit : undefined,
+    );
   }
 
   @Get('track/:orderId')

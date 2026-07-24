@@ -11,6 +11,10 @@ export function getPaginationParams(page?: number, limit?: number) {
   return { skip: (p - 1) * l, take: l, page: p, limit: l };
 }
 
-export function paginateMeta(total: number, page: number, limit: number): PaginationMeta {
+export function paginateMeta(
+  total: number,
+  page: number,
+  limit: number,
+): PaginationMeta {
   return { total, page, limit, totalPages: Math.ceil(total / limit) };
 }

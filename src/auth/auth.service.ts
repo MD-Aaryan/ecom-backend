@@ -1,4 +1,10 @@
-import { Injectable, ForbiddenException, UnauthorizedException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  UnauthorizedException,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
@@ -10,16 +16,26 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
   private readonly logger = new Logger(AuthService.name);
+  private adminPasswordHash: string;
 
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
 
+  async onModuleInit() {
+    this.adminPasswordHash = await bcrypt.hash(
+      process.env.ADMIN_PASSWORD ?? '',
+      12,
+    );
+  }
+
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     if (existing) throw new ForbiddenException('Email already exists');
 
     const hashedPassword = await bcrypt.hash(dto.password, 12);
@@ -35,11 +51,15 @@ export class AuthService {
 
     await this.createOtp(dto.email);
 
-    return { message: 'Registration successful. Please verify OTP sent to your email.' };
+    return {
+      message: 'Registration successful. Please verify OTP sent to your email.',
+    };
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const valid = await bcrypt.compare(dto.password, user.password);
@@ -51,10 +71,11 @@ export class AuthService {
   }
 
   async adminLogin(dto: AdminLoginDto) {
-    // ponytail: simple env comparison, use bcrypt hash for production
-    if (dto.email !== process.env.ADMIN_EMAIL || dto.password !== process.env.ADMIN_PASSWORD) {
+    if (dto.email !== process.env.ADMIN_EMAIL) {
       throw new UnauthorizedException('Invalid admin credentials');
     }
+    const valid = await bcrypt.compare(dto.password, this.adminPasswordHash);
+    if (!valid) throw new UnauthorizedException('Invalid admin credentials');
 
     const token = this.jwtService.sign(
       { sub: 0, email: dto.email, role: 'ADMIN' },
@@ -86,15 +107,28 @@ export class AuthService {
       data: { refreshToken: refresh_token },
     });
 
-    return { access_token, refresh_token, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+    return {
+      access_token,
+      refresh_token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    };
   }
 
   async resendOtp(dto: ResendOtpDto) {
     // ponytail: simple rate limit — max 3 per hour
     const recentCount = await this.prisma.otp.count({
-      where: { email: dto.email, createdAt: { gte: new Date(Date.now() - 3600000) } },
+      where: {
+        email: dto.email,
+        createdAt: { gte: new Date(Date.now() - 3600000) },
+      },
     });
-    if (recentCount >= 3) throw new ForbiddenException('Too many OTP requests. Try again later.');
+    if (recentCount >= 3)
+      throw new ForbiddenException('Too many OTP requests. Try again later.');
 
     await this.prisma.otp.deleteMany({ where: { email: dto.email } });
 
@@ -106,13 +140,17 @@ export class AuthService {
   async refresh(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken);
-      const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
       if (!user || user.refreshToken !== refreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
       const newPayload = { sub: user.id, email: user.email, role: user.role };
-      const access_token = this.jwtService.sign(newPayload, { expiresIn: '15m' });
+      const access_token = this.jwtService.sign(newPayload, {
+        expiresIn: '15m',
+      });
 
       return { access_token };
     } catch {
@@ -137,6 +175,5 @@ export class AuthService {
         expiresAt: new Date(Date.now() + 5 * 60 * 1000),
       },
     });
-    this.logger.log(`OTP for ${email}: ${otp}`);
   }
 }

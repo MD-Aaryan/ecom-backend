@@ -1,4 +1,12 @@
-import { IsOptional, IsString, IsEnum, IsNumber, IsInt, IsDateString, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsNumber,
+  IsInt,
+  IsDateString,
+  IsBoolean,
+} from 'class-validator';
 import { DiscountType } from '@prisma/client';
 
 export class UpdateCouponDto {

@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { SubcategoryService } from './subcategory.service';
 import { CreateSubcategoryDto } from './dto/create-subcategory.dto';
 import { UpdateSubcategoryDto } from './dto/update-subcategory.dto';
@@ -13,7 +23,9 @@ export class SubcategoryController {
 
   @Get()
   findAll(@Query('categoryId') categoryId?: string) {
-    return this.subcategoryService.findAll(categoryId ? +categoryId : undefined);
+    return this.subcategoryService.findAll(
+      categoryId ? +categoryId : undefined,
+    );
   }
 
   @Get(':id')

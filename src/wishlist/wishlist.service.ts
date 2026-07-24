@@ -13,7 +13,9 @@ export class WishlistService {
   }
 
   async addToWishlist(userId: number, productId: number) {
-    const existing = await this.prisma.wishlistItem.findFirst({ where: { userId, productId } });
+    const existing = await this.prisma.wishlistItem.findFirst({
+      where: { userId, productId },
+    });
     if (existing) throw new ConflictException('Product already in wishlist');
 
     return this.prisma.wishlistItem.create({ data: { userId, productId } });

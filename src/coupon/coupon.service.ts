@@ -1,9 +1,17 @@
-import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCouponDto } from './dto/create-coupon.dto';
 import { UpdateCouponDto } from './dto/update-coupon.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
-import { getPaginationParams, paginateMeta } from '../common/helpers/pagination.helper';
+import {
+  getPaginationParams,
+  paginateMeta,
+} from '../common/helpers/pagination.helper';
 
 @Injectable()
 export class CouponService {
@@ -20,7 +28,11 @@ export class CouponService {
   async findAll(page?: number, limit?: number) {
     const { skip, take, page: p, limit: l } = getPaginationParams(page, limit);
     const [data, total] = await Promise.all([
-      this.prisma.coupon.findMany({ skip, take, orderBy: { createdAt: 'desc' } }),
+      this.prisma.coupon.findMany({
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+      }),
       this.prisma.coupon.count(),
     ]);
     return { data, meta: paginateMeta(total, p, l) };
@@ -42,16 +54,22 @@ export class CouponService {
   }
 
   async validate(dto: ValidateCouponDto) {
-    const coupon = await this.prisma.coupon.findUnique({ where: { code: dto.code.toUpperCase() } });
+    const coupon = await this.prisma.coupon.findUnique({
+      where: { code: dto.code.toUpperCase() },
+    });
     if (!coupon) throw new NotFoundException('Coupon not found');
     if (!coupon.isActive) throw new BadRequestException('Coupon is inactive');
-    if (coupon.expiresAt < new Date()) throw new BadRequestException('Coupon has expired');
-    if (coupon.usedCount >= coupon.usageLimit) throw new BadRequestException('Coupon usage limit reached');
-    if (dto.orderAmount < coupon.minOrderAmount) throw new BadRequestException('Minimum order amount not met');
+    if (coupon.expiresAt < new Date())
+      throw new BadRequestException('Coupon has expired');
+    if (coupon.usedCount >= coupon.usageLimit)
+      throw new BadRequestException('Coupon usage limit reached');
+    if (dto.orderAmount < coupon.minOrderAmount)
+      throw new BadRequestException('Minimum order amount not met');
 
-    let discount = coupon.discountType === 'PERCENTAGE'
-      ? (dto.orderAmount * coupon.discountValue) / 100
-      : coupon.discountValue;
+    let discount =
+      coupon.discountType === 'PERCENTAGE'
+        ? (dto.orderAmount * coupon.discountValue) / 100
+        : coupon.discountValue;
 
     if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
 

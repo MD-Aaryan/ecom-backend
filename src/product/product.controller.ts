@@ -1,5 +1,15 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductService } from './product.service';
@@ -39,7 +49,11 @@ export class ProductController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @UseInterceptors(FileInterceptor('image'))
-  update(@Param('id') id: string, @Body() dto: UpdateProductDto, @UploadedFile() file?: any) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateProductDto,
+    @UploadedFile() file?: any,
+  ) {
     return this.productService.update(+id, dto, file);
   }
 

@@ -2,7 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { Role } from '@prisma/client';
-import { getPaginationParams, paginateMeta } from '../common/helpers/pagination.helper';
+import {
+  getPaginationParams,
+  paginateMeta,
+} from '../common/helpers/pagination.helper';
 
 @Injectable()
 export class UserService {
@@ -30,7 +33,15 @@ export class UserService {
       this.prisma.user.findMany({
         skip,
         take,
-        select: { id: true, name: true, email: true, phone: true, role: true, isActive: true, createdAt: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+        },
       }),
       this.prisma.user.count(),
     ]);

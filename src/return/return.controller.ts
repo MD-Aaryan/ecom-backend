@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { ReturnService } from './return.service';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { UpdateReturnStatusDto } from './dto/update-return-status.dto';
@@ -13,7 +22,11 @@ export class ReturnController {
 
   @Post('orders/:id/return')
   @UseGuards(JwtAuthGuard)
-  requestReturn(@Param('id') id: string, @Body() dto: CreateReturnDto, @Req() req: any) {
+  requestReturn(
+    @Param('id') id: string,
+    @Body() dto: CreateReturnDto,
+    @Req() req: any,
+  ) {
     return this.returnService.requestReturn(+id, req.user.userId, dto);
   }
 

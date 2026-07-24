@@ -1,4 +1,9 @@
-import { Injectable, Inject, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { CLOUDINARY } from './cloudinary.provider';
 
 @Injectable()
@@ -9,8 +14,12 @@ export class CloudinaryService {
 
   async uploadFile(file: any, folder?: string) {
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowed.includes(file.mimetype)) throw new BadRequestException('Only JPEG, PNG, and WebP files are allowed');
-    if (file.size > 5 * 1024 * 1024) throw new BadRequestException('File size must be less than 5MB');
+    if (!allowed.includes(file.mimetype))
+      throw new BadRequestException(
+        'Only JPEG, PNG, and WebP files are allowed',
+      );
+    if (file.size > 5 * 1024 * 1024)
+      throw new BadRequestException('File size must be less than 5MB');
 
     return new Promise<{ url: string; publicId: string }>((resolve, reject) => {
       const upload = this.cloudinary.uploader.upload_stream(

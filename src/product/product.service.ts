@@ -6,7 +6,10 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import { ProductQueryDto, SortBy } from './dto/product-query.dto';
-import { getPaginationParams, paginateMeta } from '../common/helpers/pagination.helper';
+import {
+  getPaginationParams,
+  paginateMeta,
+} from '../common/helpers/pagination.helper';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -30,7 +33,10 @@ export class ProductService {
   }
 
   async searchAndFilter(query: ProductQueryDto) {
-    const { skip, take, page, limit } = getPaginationParams(query.page, query.limit);
+    const { skip, take, page, limit } = getPaginationParams(
+      query.page,
+      query.limit,
+    );
 
     const where: Prisma.ProductWhereInput = { isActive: true };
 
@@ -55,7 +61,13 @@ export class ProductService {
     else orderBy.createdAt = 'desc';
 
     const [data, total] = await Promise.all([
-      this.prisma.product.findMany({ where, orderBy, skip, take, include: { variants: true, category: true } }),
+      this.prisma.product.findMany({
+        where,
+        orderBy,
+        skip,
+        take,
+        include: { variants: true, category: true },
+      }),
       this.prisma.product.count({ where }),
     ]);
 
@@ -65,16 +77,20 @@ export class ProductService {
   async findOne(id: number) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { variants: true, category: true },
+      include: {
+        variants: true,
+        category: true,
+        reviews: { select: { rating: true } },
+      },
     });
     if (!product) throw new NotFoundException('Product not found');
 
-    const ratingAgg = await this.prisma.review.aggregate({
-      where: { productId: id },
-      _avg: { rating: true },
-    });
+    const { reviews, ...rest } = product;
+    const avgRating = reviews.length
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+      : null;
 
-    return { ...product, avgRating: ratingAgg._avg.rating ?? null };
+    return { ...rest, avgRating };
   }
 
   async update(id: number, dto: UpdateProductDto, file?: any) {
@@ -86,12 +102,19 @@ export class ProductService {
       data.imageUrl = result.url;
     }
 
-    return this.prisma.product.update({ where: { id }, data, include: { variants: true, category: true } });
+    return this.prisma.product.update({
+      where: { id },
+      data,
+      include: { variants: true, category: true },
+    });
   }
 
   async softDelete(id: number) {
     await this.findOne(id);
-    await this.prisma.product.update({ where: { id }, data: { isActive: false } });
+    await this.prisma.product.update({
+      where: { id },
+      data: { isActive: false },
+    });
     return { message: 'Product deleted successfully' };
   }
 
@@ -101,13 +124,20 @@ export class ProductService {
   }
 
   async updateVariant(variantId: number, dto: UpdateVariantDto) {
-    const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+    });
     if (!variant) throw new NotFoundException('Variant not found');
-    return this.prisma.productVariant.update({ where: { id: variantId }, data: dto });
+    return this.prisma.productVariant.update({
+      where: { id: variantId },
+      data: dto,
+    });
   }
 
   async deleteVariant(variantId: number) {
-    const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+    });
     if (!variant) throw new NotFoundException('Variant not found');
     await this.prisma.productVariant.delete({ where: { id: variantId } });
     return { message: 'Variant deleted successfully' };

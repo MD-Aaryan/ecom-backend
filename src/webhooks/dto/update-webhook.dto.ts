@@ -1,4 +1,10 @@
-import { IsOptional, IsUrl, IsArray, IsString, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsUrl,
+  IsArray,
+  IsString,
+  IsBoolean,
+} from 'class-validator';
 
 export class UpdateWebhookDto {
   @IsOptional()

@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { SupportService } from './support.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ReplyTicketDto } from './dto/reply-ticket.dto';
@@ -26,13 +35,22 @@ export class SupportController {
   @Get('support/tickets/:id')
   @UseGuards(JwtAuthGuard)
   getTicket(@Param('id') id: string, @Req() req: any) {
-    return this.supportService.getTicketDetails(+id, req.user.userId, req.user.role);
+    return this.supportService.getTicketDetails(
+      +id,
+      req.user.userId,
+      req.user.role,
+    );
   }
 
   @Post('support/tickets/:id/reply')
   @UseGuards(JwtAuthGuard)
   reply(@Param('id') id: string, @Body() dto: ReplyTicketDto, @Req() req: any) {
-    return this.supportService.replyToTicket(+id, req.user.userId, dto, req.user.role === 'ADMIN');
+    return this.supportService.replyToTicket(
+      +id,
+      req.user.userId,
+      dto,
+      req.user.role === 'ADMIN',
+    );
   }
 
   @Patch('support/tickets/:id/status')
@@ -58,7 +76,10 @@ export class SupportController {
   @Patch('admin/support/tickets/:id/priority')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  updatePriority(@Param('id') id: string, @Body('priority') priority: TicketPriority) {
+  updatePriority(
+    @Param('id') id: string,
+    @Body('priority') priority: TicketPriority,
+  ) {
     return this.supportService.updatePriority(+id, priority);
   }
 }
