@@ -1,12 +1,12 @@
-import { IsInt, Min, IsOptional } from 'class-validator';
+import { IsInt, Min, IsOptional, IsString } from 'class-validator';
 
 export class AddToCartDto {
-  @IsInt()
-  productId: number;
+  @IsString()
+  productId: string;
 
   @IsOptional()
-  @IsInt()
-  variantId?: number;
+  @IsString()
+  variantId?: string;
 
   @IsInt()
   @Min(1)

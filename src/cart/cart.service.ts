@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
@@ -12,11 +11,15 @@ import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 export class CartService {
   constructor(private prisma: PrismaService) {}
 
-  private async getOrCreateCart(userId: number) {
-    let cart = await this.prisma.cart.findUnique({
+  private async getCartForUser(userId: string) {
+    return this.prisma.cart.findUnique({
       where: { userId },
       include: { items: { include: { product: true } } },
     });
+  }
+
+  private async ensureCart(userId: string) {
+    let cart = await this.getCartForUser(userId);
     if (!cart) {
       cart = await this.prisma.cart.create({
         data: { userId },
@@ -26,11 +29,11 @@ export class CartService {
     return cart;
   }
 
-  async getCart(userId: number) {
-    return this.getOrCreateCart(userId);
+  async getCart(userId: string) {
+    return this.ensureCart(userId);
   }
 
-  async addToCart(userId: number, dto: AddToCartDto) {
+  async addToCart(userId: string, dto: AddToCartDto) {
     const product = await this.prisma.product.findUnique({
       where: { id: dto.productId },
     });
@@ -48,7 +51,7 @@ export class CartService {
     if (dto.quantity > stock)
       throw new BadRequestException('Insufficient stock');
 
-    const cart = await this.getOrCreateCart(userId);
+    const cart = await this.ensureCart(userId);
     const existing = cart.items.find(
       (i) =>
         i.productId === dto.productId &&
@@ -75,13 +78,16 @@ export class CartService {
   }
 
   async updateQuantity(
-    userId: number,
-    cartItemId: number,
+    userId: string,
+    cartItemId: string,
     dto: UpdateCartItemDto,
   ) {
-    const cart = await this.getOrCreateCart(userId);
-    const item = cart.items.find((i) => i.id === cartItemId);
-    if (!item) throw new NotFoundException('Cart item not found');
+    const item = await this.prisma.cartItem.findUnique({
+      where: { id: cartItemId },
+      include: { cart: true },
+    });
+    if (!item || item.cart.userId !== userId)
+      throw new NotFoundException('Cart item not found');
 
     const product = await this.prisma.product.findUnique({
       where: { id: item.productId },
@@ -104,18 +110,23 @@ export class CartService {
     });
   }
 
-  async removeItem(userId: number, cartItemId: number) {
-    const cart = await this.getOrCreateCart(userId);
-    if (!cart.items.find((i) => i.id === cartItemId))
+  async removeItem(userId: string, cartItemId: string) {
+    const item = await this.prisma.cartItem.findUnique({
+      where: { id: cartItemId },
+      include: { cart: true },
+    });
+    if (!item || item.cart.userId !== userId)
       throw new NotFoundException('Cart item not found');
 
     await this.prisma.cartItem.delete({ where: { id: cartItemId } });
     return { message: 'Item removed from cart' };
   }
 
-  async clearCart(userId: number) {
-    const cart = await this.getOrCreateCart(userId);
-    await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+  async clearCart(userId: string) {
+    const cart = await this.prisma.cart.findUnique({ where: { userId } });
+    if (cart) {
+      await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+    }
     return { message: 'Cart cleared' };
   }
 }

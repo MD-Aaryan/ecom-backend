@@ -7,12 +7,12 @@ import {
   Body,
   Param,
   UseGuards,
-  Req,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('cart')
 export class CartController {
@@ -20,14 +20,14 @@ export class CartController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  getCart(@Req() req: any) {
-    return this.cartService.getCart(req.user.userId);
+  getCart(@CurrentUser('userId') userId: string) {
+    return this.cartService.getCart(userId);
   }
 
   @Post('add')
   @UseGuards(JwtAuthGuard)
-  add(@Body() dto: AddToCartDto, @Req() req: any) {
-    return this.cartService.addToCart(req.user.userId, dto);
+  add(@Body() dto: AddToCartDto, @CurrentUser('userId') userId: string) {
+    return this.cartService.addToCart(userId, dto);
   }
 
   @Patch('item/:id')
@@ -35,20 +35,20 @@ export class CartController {
   update(
     @Param('id') id: string,
     @Body() dto: UpdateCartItemDto,
-    @Req() req: any,
+    @CurrentUser('userId') userId: string,
   ) {
-    return this.cartService.updateQuantity(req.user.userId, +id, dto);
+    return this.cartService.updateQuantity(userId, id, dto);
   }
 
   @Delete('item/:id')
   @UseGuards(JwtAuthGuard)
-  remove(@Param('id') id: string, @Req() req: any) {
-    return this.cartService.removeItem(req.user.userId, +id);
+  remove(@Param('id') id: string, @CurrentUser('userId') userId: string) {
+    return this.cartService.removeItem(userId, id);
   }
 
   @Delete('clear')
   @UseGuards(JwtAuthGuard)
-  clear(@Req() req: any) {
-    return this.cartService.clearCart(req.user.userId);
+  clear(@CurrentUser('userId') userId: string) {
+    return this.cartService.clearCart(userId);
   }
 }

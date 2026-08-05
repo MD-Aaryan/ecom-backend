@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
 
-// ponytail: sync dispatch with retry — replace with Bull queue when throughput matters
 @Injectable()
 export class WebhookProcessor {
   private readonly logger = new Logger(WebhookProcessor.name);
@@ -10,11 +9,11 @@ export class WebhookProcessor {
   constructor(private prisma: PrismaService) {}
 
   async dispatch(
-    webhookId: number,
+    webhookId: string,
     url: string,
     secret: string | null,
     event: string,
-    data: any,
+    data: unknown,
   ) {
     const payload = JSON.stringify({
       event,
@@ -39,7 +38,6 @@ export class WebhookProcessor {
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        // ponytail: use native fetch instead of axios
         const res = await fetch(url, {
           method: 'POST',
           headers,
@@ -49,8 +47,8 @@ export class WebhookProcessor {
         responseText = await res.text();
         success = status < 500;
         if (success) break;
-      } catch (err: any) {
-        responseText = err.message;
+      } catch (err: unknown) {
+        responseText = err instanceof Error ? err.message : String(err);
         status = 0;
       }
       if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));

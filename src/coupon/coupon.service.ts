@@ -38,14 +38,14 @@ export class CouponService {
     return { data, meta: paginateMeta(total, p, l) };
   }
 
-  async update(id: number, dto: UpdateCouponDto) {
+  async update(id: string, dto: UpdateCouponDto) {
     const coupon = await this.prisma.coupon.findUnique({ where: { id } });
     if (!coupon) throw new NotFoundException('Coupon not found');
 
     return this.prisma.coupon.update({ where: { id }, data: dto });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     const coupon = await this.prisma.coupon.findUnique({ where: { id } });
     if (!coupon) throw new NotFoundException('Coupon not found');
 
@@ -72,6 +72,7 @@ export class CouponService {
         : coupon.discountValue;
 
     if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
+    discount = Math.min(discount, dto.orderAmount);
 
     return { coupon, discount };
   }

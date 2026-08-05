@@ -23,14 +23,12 @@ export class SubcategoryController {
 
   @Get()
   findAll(@Query('categoryId') categoryId?: string) {
-    return this.subcategoryService.findAll(
-      categoryId ? +categoryId : undefined,
-    );
+    return this.subcategoryService.findAll(categoryId);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.subcategoryService.findOne(+id);
+    return this.subcategoryService.findOne(id);
   }
 
   @Post()
@@ -44,13 +42,13 @@ export class SubcategoryController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateSubcategoryDto) {
-    return this.subcategoryService.update(+id, dto);
+    return this.subcategoryService.update(id, dto);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
-    return this.subcategoryService.softDelete(+id);
+    return this.subcategoryService.softDelete(id);
   }
 }

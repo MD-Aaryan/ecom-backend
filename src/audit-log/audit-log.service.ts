@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   getPaginationParams,
@@ -12,10 +13,10 @@ export class AuditLogService {
   async logAction(
     action: string,
     entity: string,
-    entityId: number,
-    userId: number,
-    oldValue?: any,
-    newValue?: any,
+    entityId: string,
+    userId: string,
+    oldValue?: unknown,
+    newValue?: unknown,
   ) {
     await this.prisma.auditLog.create({
       data: {
@@ -23,8 +24,8 @@ export class AuditLogService {
         entity,
         entityId,
         userId,
-        oldValue: oldValue ?? undefined,
-        newValue: newValue ?? undefined,
+        oldValue: (oldValue ?? undefined) as Prisma.InputJsonValue | undefined,
+        newValue: (newValue ?? undefined) as Prisma.InputJsonValue | undefined,
       },
     });
   }
@@ -33,10 +34,10 @@ export class AuditLogService {
     page?: number,
     limit?: number,
     entity?: string,
-    userId?: number,
+    userId?: string,
   ) {
     const { skip, take, page: p, limit: l } = getPaginationParams(page, limit);
-    const where: any = {};
+    const where: Prisma.AuditLogWhereInput = {};
     if (entity) where.entity = entity;
     if (userId) where.userId = userId;
 

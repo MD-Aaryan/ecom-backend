@@ -1,18 +1,15 @@
-import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterWebhookDto } from './dto/register-webhook.dto';
 import { UpdateWebhookDto } from './dto/update-webhook.dto';
-import { WebhookProcessor } from './webhook.processor';
 
 @Injectable()
 export class WebhookService {
   constructor(
     private prisma: PrismaService,
-    private processor: WebhookProcessor,
+    @InjectQueue('webhook') private webhookQueue: Queue,
   ) {}
 
   async register(dto: RegisterWebhookDto) {
@@ -23,33 +20,36 @@ export class WebhookService {
     return this.prisma.webhook.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
-  async update(id: number, dto: UpdateWebhookDto) {
+  async update(id: string, dto: UpdateWebhookDto) {
     const webhook = await this.prisma.webhook.findUnique({ where: { id } });
     if (!webhook) throw new NotFoundException('Webhook not found');
     return this.prisma.webhook.update({ where: { id }, data: dto });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     const webhook = await this.prisma.webhook.findUnique({ where: { id } });
     if (!webhook) throw new NotFoundException('Webhook not found');
     await this.prisma.webhook.delete({ where: { id } });
     return { message: 'Webhook deleted' };
   }
 
-  async triggerEvent(event: string, data: any) {
+  async triggerEvent(event: string, data: unknown) {
     const webhooks = await this.prisma.webhook.findMany({
       where: { isActive: true, events: { has: event } },
     });
 
     for (const w of webhooks) {
-      // ponytail: fire-and-forget, no await — replace with queue for production
-      this.processor
-        .dispatch(w.id, w.url, w.secret, event, data)
-        .catch(() => {});
+      await this.webhookQueue.add('dispatch', {
+        webhookId: w.id,
+        url: w.url,
+        secret: w.secret,
+        event,
+        data,
+      });
     }
   }
 
-  async getLogs(webhookId: number) {
+  async getLogs(webhookId: string) {
     const webhook = await this.prisma.webhook.findUnique({
       where: { id: webhookId },
     });
@@ -60,18 +60,18 @@ export class WebhookService {
     });
   }
 
-  async testWebhook(webhookId: number) {
+  async testWebhook(webhookId: string) {
     const webhook = await this.prisma.webhook.findUnique({
       where: { id: webhookId },
     });
     if (!webhook) throw new NotFoundException('Webhook not found');
-    await this.processor.dispatch(
+    await this.webhookQueue.add('dispatch', {
       webhookId,
-      webhook.url,
-      webhook.secret,
-      'test',
-      { message: 'test event' },
-    );
-    return { message: 'Test event dispatched' };
+      url: webhook.url,
+      secret: webhook.secret,
+      event: 'test',
+      data: { message: 'test event' },
+    });
+    return { message: 'Test event queued' };
   }
 }

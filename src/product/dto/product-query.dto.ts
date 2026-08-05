@@ -13,14 +13,12 @@ export class ProductQueryDto {
   q?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  category?: number;
+  @IsString()
+  category?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  subcategory?: number;
+  @IsString()
+  subcategory?: string;
 
   @IsOptional()
   @Type(() => Number)

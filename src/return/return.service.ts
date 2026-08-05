@@ -7,12 +7,16 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { UpdateReturnStatusDto } from './dto/update-return-status.dto';
+import {
+  getPaginationParams,
+  paginateMeta,
+} from '../common/helpers/pagination.helper';
 
 @Injectable()
 export class ReturnService {
   constructor(private prisma: PrismaService) {}
 
-  async requestReturn(orderId: number, userId: number, dto: CreateReturnDto) {
+  async requestReturn(orderId: string, userId: string, dto: CreateReturnDto) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
     });
@@ -23,7 +27,6 @@ export class ReturnService {
         'Order must be delivered to request return',
       );
 
-    // ponytail: 7-day window uses createdAt, would use deliveredAt with a proper timestamp
     const daysSinceDelivery = Math.floor(
       (Date.now() - order.updatedAt.getTime()) / 86400000,
     );
@@ -41,25 +44,39 @@ export class ReturnService {
     });
   }
 
-  getUserReturns(userId: number) {
-    return this.prisma.returnRequest.findMany({
-      where: { userId },
-      include: { order: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  async getUserReturns(userId: string, page?: number, limit?: number) {
+    const { skip, take, page: p, limit: l } = getPaginationParams(page, limit);
+    const [data, total] = await Promise.all([
+      this.prisma.returnRequest.findMany({
+        where: { userId },
+        skip,
+        take,
+        include: { order: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.returnRequest.count({ where: { userId } }),
+    ]);
+    return { data, meta: paginateMeta(total, p, l) };
   }
 
-  getAllReturns() {
-    return this.prisma.returnRequest.findMany({
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        order: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async getAllReturns(page?: number, limit?: number) {
+    const { skip, take, page: p, limit: l } = getPaginationParams(page, limit);
+    const [data, total] = await Promise.all([
+      this.prisma.returnRequest.findMany({
+        skip,
+        take,
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          order: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.returnRequest.count(),
+    ]);
+    return { data, meta: paginateMeta(total, p, l) };
   }
 
-  async updateReturnStatus(returnId: number, dto: UpdateReturnStatusDto) {
+  async updateReturnStatus(returnId: string, dto: UpdateReturnStatusDto) {
     const record = await this.prisma.returnRequest.findUnique({
       where: { id: returnId },
     });

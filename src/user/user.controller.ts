@@ -7,8 +7,6 @@ import {
   Param,
   Query,
   UseGuards,
-  Req,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -25,14 +23,14 @@ export class UserController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  getProfile(@CurrentUser('userId') userId: number) {
+  getProfile(@CurrentUser('userId') userId: string) {
     return this.userService.getProfile(userId);
   }
 
   @Patch('me')
   @UseGuards(JwtAuthGuard)
   updateProfile(
-    @CurrentUser('userId') userId: number,
+    @CurrentUser('userId') userId: string,
     @Body() dto: UpdateProfileDto,
   ) {
     return this.userService.updateProfile(userId, dto);
@@ -48,24 +46,28 @@ export class UserController {
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  getUserById(@Param('id', ParseIntPipe) id: number) {
+  getUserById(@Param('id') id: string) {
     return this.userService.getUserById(id);
   }
 
   @Patch(':id/role')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  updateRole(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateRoleDto,
-  ) {
+  updateRole(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
     return this.userService.updateRole(id, dto.role);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  softDeleteUser(@Param('id', ParseIntPipe) id: number) {
+  softDeleteUser(@Param('id') id: string) {
     return this.userService.softDeleteUser(id);
+  }
+
+  @Delete(':id/hard')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  hardDeleteUser(@Param('id') id: string) {
+    return this.userService.hardDeleteUser(id);
   }
 }

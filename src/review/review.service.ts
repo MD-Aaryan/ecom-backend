@@ -15,7 +15,7 @@ import {
 export class ReviewService {
   constructor(private prisma: PrismaService) {}
 
-  async create(userId: number, productId: number, dto: CreateReviewDto) {
+  async create(userId: string, productId: string, dto: CreateReviewDto) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
     });
@@ -38,7 +38,7 @@ export class ReviewService {
     return this.prisma.review.create({ data: { ...dto, userId, productId } });
   }
 
-  async getProductReviews(productId: number, page?: number, limit?: number) {
+  async getProductReviews(productId: string, page?: number, limit?: number) {
     const { skip, take, page: p, limit: l } = getPaginationParams(page, limit);
     const [data, total] = await Promise.all([
       this.prisma.review.findMany({
@@ -53,7 +53,7 @@ export class ReviewService {
     return { data, meta: paginateMeta(total, p, l) };
   }
 
-  async update(userId: number, reviewId: number, dto: UpdateReviewDto) {
+  async update(userId: string, reviewId: string, dto: UpdateReviewDto) {
     const review = await this.prisma.review.findUnique({
       where: { id: reviewId },
     });
@@ -64,7 +64,7 @@ export class ReviewService {
     return this.prisma.review.update({ where: { id: reviewId }, data: dto });
   }
 
-  async delete(userId: number, reviewId: number, userRole: string) {
+  async delete(userId: string, reviewId: string, userRole: string) {
     const review = await this.prisma.review.findUnique({
       where: { id: reviewId },
     });

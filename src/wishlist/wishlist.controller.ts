@@ -5,10 +5,10 @@ import {
   Delete,
   Param,
   UseGuards,
-  Req,
 } from '@nestjs/common';
 import { WishlistService } from './wishlist.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('wishlist')
 export class WishlistController {
@@ -16,25 +16,31 @@ export class WishlistController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  getWishlist(@Req() req: any) {
-    return this.wishlistService.getWishlist(req.user.userId);
+  getWishlist(@CurrentUser('userId') userId: string) {
+    return this.wishlistService.getWishlist(userId);
   }
 
   @Post('add/:productId')
   @UseGuards(JwtAuthGuard)
-  add(@Param('productId') productId: string, @Req() req: any) {
-    return this.wishlistService.addToWishlist(req.user.userId, +productId);
+  add(
+    @Param('productId') productId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.wishlistService.addToWishlist(userId, productId);
   }
 
   @Delete('remove/:productId')
   @UseGuards(JwtAuthGuard)
-  remove(@Param('productId') productId: string, @Req() req: any) {
-    return this.wishlistService.removeFromWishlist(req.user.userId, +productId);
+  remove(
+    @Param('productId') productId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.wishlistService.removeFromWishlist(userId, productId);
   }
 
   @Delete('clear')
   @UseGuards(JwtAuthGuard)
-  clear(@Req() req: any) {
-    return this.wishlistService.clearWishlist(req.user.userId);
+  clear(@CurrentUser('userId') userId: string) {
+    return this.wishlistService.clearWishlist(userId);
   }
 }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { Role } from '@prisma/client';
@@ -11,14 +15,14 @@ import {
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  async getProfile(userId: number) {
+  async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     const { password, refreshToken, ...rest } = user;
     return rest;
   }
 
-  async updateProfile(userId: number, dto: UpdateProfileDto) {
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: dto,
@@ -48,14 +52,14 @@ export class UserService {
     return { data, meta: paginateMeta(total, p, l) };
   }
 
-  async getUserById(id: number) {
+  async getUserById(id: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
     const { password, refreshToken, ...rest } = user;
     return rest;
   }
 
-  async updateRole(id: number, role: Role) {
+  async updateRole(id: string, role: Role) {
     const user = await this.prisma.user.update({
       where: { id },
       data: { role },
@@ -64,11 +68,66 @@ export class UserService {
     return rest;
   }
 
-  async softDeleteUser(id: number) {
+  async softDeleteUser(id: string) {
     await this.prisma.user.update({
       where: { id },
       data: { isActive: false },
     });
     return { message: 'User deleted successfully' };
+  }
+
+  async hardDeleteUser(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.role === Role.ADMIN)
+      throw new ForbiddenException(
+        'Cannot permanently delete an admin account',
+      );
+
+    return this.prisma.$transaction(async (tx) => {
+      const orderIds = (
+        await tx.order.findMany({ where: { userId: id }, select: { id: true } })
+      ).map((o) => o.id);
+
+      if (orderIds.length) {
+        await tx.statusLog.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.payment.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.returnRequest.deleteMany({
+          where: { orderId: { in: orderIds } },
+        });
+        await tx.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.order.deleteMany({ where: { id: { in: orderIds } } });
+      }
+
+      const cartIds = (
+        await tx.cart.findMany({ where: { userId: id }, select: { id: true } })
+      ).map((c) => c.id);
+
+      if (cartIds.length) {
+        await tx.cartItem.deleteMany({ where: { cartId: { in: cartIds } } });
+        await tx.cart.deleteMany({ where: { id: { in: cartIds } } });
+      }
+
+      const ticketIds = (
+        await tx.supportTicket.findMany({
+          where: { userId: id },
+          select: { id: true },
+        })
+      ).map((t) => t.id);
+
+      if (ticketIds.length) {
+        await tx.ticketReply.deleteMany({
+          where: { ticketId: { in: ticketIds } },
+        });
+        await tx.supportTicket.deleteMany({ where: { id: { in: ticketIds } } });
+      }
+
+      await tx.review.deleteMany({ where: { userId: id } });
+      await tx.wishlistItem.deleteMany({ where: { userId: id } });
+      await tx.otp.deleteMany({ where: { email: user.email } });
+      await tx.user.delete({ where: { id } });
+
+      return { message: 'User permanently deleted' };
+    });
   }
 }

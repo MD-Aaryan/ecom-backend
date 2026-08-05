@@ -21,10 +21,10 @@ export class CreateProductDto {
   @IsInt()
   stock: number;
 
-  @IsInt()
-  categoryId: number;
+  @IsString()
+  categoryId: string;
 
   @IsOptional()
-  @IsInt()
-  subcategoryId?: number;
+  @IsString()
+  subcategoryId?: string;
 }

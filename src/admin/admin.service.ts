@@ -1,11 +1,25 @@
 import { Injectable } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cache: Cache,
+  ) {}
 
   async getStats() {
+    const cached = await this.cache.get<{
+      activeUsers: number;
+      activeProducts: number;
+      totalOrders: number;
+      revenue: number;
+    }>('admin:stats');
+    if (cached) return cached;
+
     const [activeUsers, activeProducts, totalOrders, revenue] =
       await Promise.all([
         this.prisma.user.count({ where: { isActive: true } }),
@@ -16,12 +30,15 @@ export class AdminService {
           where: { payment: { status: 'PAID' } },
         }),
       ]);
-    return {
+
+    const result = {
       activeUsers,
       activeProducts,
       totalOrders,
       revenue: revenue._sum.total ?? 0,
     };
+    await this.cache.set('admin:stats', result, 120);
+    return result;
   }
 
   async getRevenueData(interval: string) {
@@ -44,6 +61,14 @@ export class AdminService {
   }
 
   async getTopProducts() {
+    const cached = await this.cache.get<
+      {
+        product: { id: string; title: string } | null;
+        totalSold: number | null;
+      }[]
+    >('admin:topProducts');
+    if (cached) return cached;
+
     const items = await this.prisma.orderItem.groupBy({
       by: ['productId'],
       _sum: { quantity: true },
@@ -57,10 +82,12 @@ export class AdminService {
     });
 
     const productMap = new Map(products.map((p) => [p.id, p]));
-    return items.map((i) => ({
+    const result = items.map((i) => ({
       product: productMap.get(i.productId) ?? null,
       totalSold: i._sum.quantity,
     }));
+    await this.cache.set('admin:topProducts', result, 120);
+    return result;
   }
 
   async getRecentOrders() {

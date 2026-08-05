@@ -8,12 +8,12 @@ import {
   Param,
   Query,
   UseGuards,
-  Req,
 } from '@nestjs/common';
 import { ReviewService } from './review.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller()
 export class ReviewController {
@@ -26,7 +26,7 @@ export class ReviewController {
     @Query('limit') limit?: string,
   ) {
     return this.reviewService.getProductReviews(
-      +id,
+      id,
       page ? +page : undefined,
       limit ? +limit : undefined,
     );
@@ -37,9 +37,9 @@ export class ReviewController {
   create(
     @Param('id') id: string,
     @Body() dto: CreateReviewDto,
-    @Req() req: any,
+    @CurrentUser('userId') userId: string,
   ) {
-    return this.reviewService.create(req.user.userId, +id, dto);
+    return this.reviewService.create(userId, id, dto);
   }
 
   @Patch('reviews/:id')
@@ -47,14 +47,18 @@ export class ReviewController {
   update(
     @Param('id') id: string,
     @Body() dto: UpdateReviewDto,
-    @Req() req: any,
+    @CurrentUser('userId') userId: string,
   ) {
-    return this.reviewService.update(req.user.userId, +id, dto);
+    return this.reviewService.update(userId, id, dto);
   }
 
   @Delete('reviews/:id')
   @UseGuards(JwtAuthGuard)
-  delete(@Param('id') id: string, @Req() req: any) {
-    return this.reviewService.delete(req.user.userId, +id, req.user.role);
+  delete(
+    @Param('id') id: string,
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    return this.reviewService.delete(userId, id, role);
   }
 }

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSubcategoryDto } from './dto/create-subcategory.dto';
 import { UpdateSubcategoryDto } from './dto/update-subcategory.dto';
@@ -21,8 +22,8 @@ export class SubcategoryService {
     return this.prisma.subcategory.create({ data: dto });
   }
 
-  findAll(categoryId?: number) {
-    const where: any = { isActive: true };
+  findAll(categoryId?: string) {
+    const where: Prisma.SubcategoryWhereInput = { isActive: true };
     if (categoryId) where.categoryId = categoryId;
     return this.prisma.subcategory.findMany({
       where,
@@ -30,7 +31,7 @@ export class SubcategoryService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     const sub = await this.prisma.subcategory.findUnique({
       where: { id },
       include: { category: true },
@@ -39,7 +40,7 @@ export class SubcategoryService {
     return sub;
   }
 
-  async update(id: number, dto: UpdateSubcategoryDto) {
+  async update(id: string, dto: UpdateSubcategoryDto) {
     await this.findOne(id);
     if (dto.categoryId) {
       const category = await this.prisma.category.findUnique({
@@ -51,7 +52,7 @@ export class SubcategoryService {
     return this.prisma.subcategory.update({ where: { id }, data: dto });
   }
 
-  async softDelete(id: number) {
+  async softDelete(id: string) {
     await this.findOne(id);
     await this.prisma.subcategory.update({
       where: { id },

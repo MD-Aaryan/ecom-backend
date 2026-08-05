@@ -22,7 +22,7 @@ export class AuditLogController {
       page ? +page : undefined,
       limit ? +limit : undefined,
       entity,
-      userId ? +userId : undefined,
+      userId,
     );
   }
 }

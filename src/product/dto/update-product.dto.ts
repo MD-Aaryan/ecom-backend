@@ -18,10 +18,10 @@ export class UpdateProductDto {
   stock?: number;
 
   @IsOptional()
-  @IsInt()
-  categoryId?: number;
+  @IsString()
+  categoryId?: string;
 
   @IsOptional()
-  @IsInt()
-  subcategoryId?: number;
+  @IsString()
+  subcategoryId?: string;
 }

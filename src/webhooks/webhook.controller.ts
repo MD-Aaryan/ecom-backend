@@ -34,21 +34,21 @@ export class WebhookController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateWebhookDto) {
-    return this.webhookService.update(+id, dto);
+    return this.webhookService.update(id, dto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.webhookService.delete(+id);
+    return this.webhookService.delete(id);
   }
 
   @Get(':id/logs')
   getLogs(@Param('id') id: string) {
-    return this.webhookService.getLogs(+id);
+    return this.webhookService.getLogs(id);
   }
 
   @Post(':id/test')
   test(@Param('id') id: string) {
-    return this.webhookService.testWebhook(+id);
+    return this.webhookService.testWebhook(id);
   }
 }

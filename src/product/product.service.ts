@@ -1,4 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -11,25 +14,46 @@ import {
   paginateMeta,
 } from '../common/helpers/pagination.helper';
 import { Prisma } from '@prisma/client';
+import { UploadedFile } from '../common/types/uploaded-file.type';
+
+export interface ProductCache {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  stock: number;
+  isActive: boolean;
+  categoryId: string;
+  subcategoryId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  category: unknown;
+  variants: unknown;
+  avgRating: number | null;
+}
 
 @Injectable()
 export class ProductService {
   constructor(
     private prisma: PrismaService,
     private cloudinary: CloudinaryService,
+    @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
-  async create(dto: CreateProductDto, file?: any) {
+  async create(dto: CreateProductDto, file?: UploadedFile) {
     let imageUrl = 'https://via.placeholder.com/600';
     if (file) {
       const result = await this.cloudinary.uploadFile(file, 'products');
       imageUrl = result.url;
     }
 
-    return this.prisma.product.create({
+    const product = await this.prisma.product.create({
       data: { ...dto, imageUrl },
       include: { variants: true, category: true },
     });
+    await this.cache.del('products:search');
+    return product;
   }
 
   async searchAndFilter(query: ProductQueryDto) {
@@ -38,43 +62,68 @@ export class ProductService {
       query.limit,
     );
 
-    const where: Prisma.ProductWhereInput = { isActive: true };
+    const conditions: string[] = ['p."isActive" = true'];
+    const params: (string | number)[] = [];
+    let paramIdx = 0;
 
     if (query.q) {
-      where.OR = [
-        { title: { contains: query.q, mode: 'insensitive' } },
-        { description: { contains: query.q, mode: 'insensitive' } },
-      ];
+      paramIdx++;
+      conditions.push(
+        `to_tsvector('english', p.title || ' ' || p.description) @@ plainto_tsquery('english', $${paramIdx})`,
+      );
+      params.push(query.q);
     }
-    if (query.category) where.categoryId = query.category;
-    if (query.subcategory) where.subcategoryId = query.subcategory;
-    if (query.minPrice || query.maxPrice) {
-      where.price = {};
-      if (query.minPrice) where.price.gte = query.minPrice;
-      if (query.maxPrice) where.price.lte = query.maxPrice;
+    if (query.category) {
+      paramIdx++;
+      conditions.push(`p."categoryId" = $${paramIdx}`);
+      params.push(query.category);
+    }
+    if (query.subcategory) {
+      paramIdx++;
+      conditions.push(`p."subcategoryId" = $${paramIdx}`);
+      params.push(query.subcategory);
+    }
+    if (query.minPrice) {
+      paramIdx++;
+      conditions.push(`p.price >= $${paramIdx}`);
+      params.push(query.minPrice);
+    }
+    if (query.maxPrice) {
+      paramIdx++;
+      conditions.push(`p.price <= $${paramIdx}`);
+      params.push(query.maxPrice);
     }
 
-    const orderBy: Prisma.ProductOrderByWithRelationInput = {};
-    if (query.sortBy === SortBy.PRICE_ASC) orderBy.price = 'asc';
-    else if (query.sortBy === SortBy.PRICE_DESC) orderBy.price = 'desc';
-    else if (query.sortBy === SortBy.NEWEST) orderBy.createdAt = 'desc';
-    else orderBy.createdAt = 'desc';
+    const whereClause = conditions.join(' AND ');
+    const orderClause =
+      query.sortBy === SortBy.PRICE_ASC
+        ? 'p.price ASC'
+        : query.sortBy === SortBy.PRICE_DESC
+          ? 'p.price DESC'
+          : 'p."createdAt" DESC';
 
-    const [data, total] = await Promise.all([
-      this.prisma.product.findMany({
-        where,
-        orderBy,
-        skip,
+    const [rows, countResult] = await Promise.all([
+      this.prisma.$queryRawUnsafe<any[]>(
+        `SELECT p.id, p.title, p.description, p.price, p."imageUrl", p.stock, p."isActive", p."createdAt", p."updatedAt", p."categoryId", p."subcategoryId", c.name AS "categoryName" FROM "Product" p LEFT JOIN "Category" c ON c.id = p."categoryId" WHERE ${whereClause} ORDER BY ${orderClause} LIMIT $${++paramIdx} OFFSET $${++paramIdx}`,
+        ...params,
         take,
-        include: { variants: true, category: true },
-      }),
-      this.prisma.product.count({ where }),
+        skip,
+      ),
+      this.prisma.$queryRawUnsafe<{ count: bigint }[]>(
+        `SELECT COUNT(*)::bigint AS count FROM "Product" p WHERE ${whereClause}`,
+        ...params,
+      ),
     ]);
 
-    return { data, meta: paginateMeta(total, page, limit) };
+    const total = Number(countResult[0]?.count ?? 0);
+    return { data: rows, meta: paginateMeta(total, page, limit) };
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
+    const cacheKey = `product:${id}`;
+    const cached = await this.cache.get<ProductCache>(cacheKey);
+    if (cached) return cached;
+
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: {
@@ -90,56 +139,74 @@ export class ProductService {
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
       : null;
 
-    return { ...rest, avgRating };
+    const result = { ...rest, avgRating };
+    await this.cache.set(cacheKey, result, 120);
+    return result;
   }
 
-  async update(id: number, dto: UpdateProductDto, file?: any) {
+  async update(id: string, dto: UpdateProductDto, file?: UploadedFile) {
     await this.findOne(id);
 
-    const data: any = { ...dto };
+    const data: Prisma.ProductUpdateInput = { ...dto };
     if (file) {
       const result = await this.cloudinary.uploadFile(file, 'products');
       data.imageUrl = result.url;
     }
 
-    return this.prisma.product.update({
+    const updated = await this.prisma.product.update({
       where: { id },
       data,
       include: { variants: true, category: true },
     });
+    await Promise.all([
+      this.cache.del(`product:${id}`),
+      this.cache.del('products:search'),
+    ]);
+    return updated;
   }
 
-  async softDelete(id: number) {
+  async softDelete(id: string) {
     await this.findOne(id);
     await this.prisma.product.update({
       where: { id },
       data: { isActive: false },
     });
+    await Promise.all([
+      this.cache.del(`product:${id}`),
+      this.cache.del('products:search'),
+    ]);
     return { message: 'Product deleted successfully' };
   }
 
-  async addVariant(productId: number, dto: CreateVariantDto) {
+  async addVariant(productId: string, dto: CreateVariantDto) {
     await this.findOne(productId);
-    return this.prisma.productVariant.create({ data: { ...dto, productId } });
+    const variant = await this.prisma.productVariant.create({
+      data: { ...dto, productId },
+    });
+    await this.cache.del(`product:${productId}`);
+    return variant;
   }
 
-  async updateVariant(variantId: number, dto: UpdateVariantDto) {
+  async updateVariant(variantId: string, dto: UpdateVariantDto) {
     const variant = await this.prisma.productVariant.findUnique({
       where: { id: variantId },
     });
     if (!variant) throw new NotFoundException('Variant not found');
-    return this.prisma.productVariant.update({
+    const updated = await this.prisma.productVariant.update({
       where: { id: variantId },
       data: dto,
     });
+    await this.cache.del(`product:${variant.productId}`);
+    return updated;
   }
 
-  async deleteVariant(variantId: number) {
+  async deleteVariant(variantId: string) {
     const variant = await this.prisma.productVariant.findUnique({
       where: { id: variantId },
     });
     if (!variant) throw new NotFoundException('Variant not found');
     await this.prisma.productVariant.delete({ where: { id: variantId } });
+    await this.cache.del(`product:${variant.productId}`);
     return { message: 'Variant deleted successfully' };
   }
 }

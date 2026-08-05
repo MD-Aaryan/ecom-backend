@@ -43,14 +43,14 @@ export class CouponController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateCouponDto) {
-    return this.couponService.update(+id, dto);
+    return this.couponService.update(id, dto);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
-    return this.couponService.delete(+id);
+    return this.couponService.delete(id);
   }
 
   @Post('validate')

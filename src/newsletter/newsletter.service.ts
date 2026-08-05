@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  getPaginationParams,
+  paginateMeta,
+} from '../common/helpers/pagination.helper';
 
 @Injectable()
 export class NewsletterService {
@@ -11,22 +15,28 @@ export class NewsletterService {
       update: { isActive: true },
       create: { email, isActive: true },
     });
-    // ponytail: welcome email stub
     return subscriber;
   }
 
   async unsubscribe(email: string) {
-    await this.prisma.newsletterSubscriber.update({
+    await this.prisma.newsletterSubscriber.updateMany({
       where: { email },
       data: { isActive: false },
     });
     return { message: 'Unsubscribed successfully' };
   }
 
-  getSubscribers() {
-    return this.prisma.newsletterSubscriber.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  async getSubscribers(page?: number, limit?: number) {
+    const { skip, take, page: p, limit: l } = getPaginationParams(page, limit);
+    const [data, total] = await Promise.all([
+      this.prisma.newsletterSubscriber.findMany({
+        where: { isActive: true },
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.newsletterSubscriber.count({ where: { isActive: true } }),
+    ]);
+    return { data, meta: paginateMeta(total, p, l) };
   }
 }

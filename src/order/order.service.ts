@@ -16,7 +16,7 @@ import {
 export class OrderService {
   constructor(private prisma: PrismaService) {}
 
-  async placeOrder(userId: number, dto: CreateOrderDto) {
+  async placeOrder(userId: string, dto: CreateOrderDto) {
     return this.prisma.$transaction(async (tx) => {
       const cart = await tx.cart.findUnique({
         where: { userId },
@@ -38,10 +38,10 @@ export class OrderService {
       ]);
 
       const productMap = new Map(
-        products.map((p): [number, typeof p] => [p.id, p]),
+        products.map((p): [string, typeof p] => [p.id, p]),
       );
       const variantMap = new Map(
-        variants.map((v): [number, typeof v] => [v.id, v]),
+        variants.map((v): [string, typeof v] => [v.id, v]),
       );
 
       let total = 0;
@@ -67,20 +67,26 @@ export class OrderService {
         });
 
       for (const item of itemsWithPrice) {
-        await tx.product.update({
-          where: { id: item.productId },
+        const stockOk = await tx.product.updateMany({
+          where: { id: item.productId, stock: { gte: item.quantity } },
           data: { stock: { decrement: item.quantity } },
         });
+        if (stockOk.count === 0)
+          throw new BadRequestException(
+            `Insufficient stock for ${productMap.get(item.productId)?.title ?? 'product'}`,
+          );
         if (item.variantId) {
-          await tx.productVariant.update({
-            where: { id: item.variantId },
+          const variantOk = await tx.productVariant.updateMany({
+            where: { id: item.variantId, stock: { gte: item.quantity } },
             data: { stock: { decrement: item.quantity } },
           });
+          if (variantOk.count === 0)
+            throw new BadRequestException('Insufficient variant stock');
         }
       }
 
       let discount = 0;
-      let couponId: number | undefined;
+      let couponId: string | undefined;
       if (dto.couponCode) {
         const coupon = await tx.coupon.findUnique({
           where: { code: dto.couponCode.toUpperCase() },
@@ -101,11 +107,14 @@ export class OrderService {
             : coupon.discountValue;
         if (coupon.maxDiscount)
           discount = Math.min(discount, coupon.maxDiscount);
+        discount = Math.min(discount, total);
         couponId = coupon.id;
-        await tx.coupon.update({
-          where: { id: coupon.id },
+        const used = await tx.coupon.updateMany({
+          where: { id: coupon.id, usedCount: { lt: coupon.usageLimit } },
           data: { usedCount: { increment: 1 } },
         });
+        if (used.count === 0)
+          throw new BadRequestException('Coupon usage limit reached');
       }
 
       const order = await tx.order.create({
@@ -136,7 +145,7 @@ export class OrderService {
     });
   }
 
-  async getUserOrders(userId: number, page?: number, limit?: number) {
+  async getUserOrders(userId: string, page?: number, limit?: number) {
     const { skip, take, page: p, limit: l } = getPaginationParams(page, limit);
     const [data, total] = await Promise.all([
       this.prisma.order.findMany({
@@ -151,7 +160,7 @@ export class OrderService {
     return { data, meta: paginateMeta(total, p, l) };
   }
 
-  async trackOrder(orderId: number, userId: number) {
+  async trackOrder(orderId: string, userId: string) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: { statusLog: { orderBy: { createdAt: 'asc' } } },
@@ -161,7 +170,7 @@ export class OrderService {
     return order;
   }
 
-  async cancelOrder(orderId: number, userId: number) {
+  async cancelOrder(orderId: string, userId: string) {
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id: orderId },
@@ -216,7 +225,7 @@ export class OrderService {
     return { data, meta: paginateMeta(total, p, l) };
   }
 
-  async updateOrderStatus(orderId: number, dto: UpdateOrderStatusDto) {
+  async updateOrderStatus(orderId: string, dto: UpdateOrderStatusDto) {
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { id: orderId } });
       if (!order) throw new NotFoundException('Order not found');

@@ -4,26 +4,38 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TicketPriority } from '@prisma/client';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ReplyTicketDto } from './dto/reply-ticket.dto';
+import {
+  getPaginationParams,
+  paginateMeta,
+} from '../common/helpers/pagination.helper';
 
 @Injectable()
 export class SupportService {
   constructor(private prisma: PrismaService) {}
 
-  createTicket(userId: number, dto: CreateTicketDto) {
+  createTicket(userId: string, dto: CreateTicketDto) {
     return this.prisma.supportTicket.create({ data: { ...dto, userId } });
   }
 
-  getUserTickets(userId: number) {
-    return this.prisma.supportTicket.findMany({
-      where: { userId },
-      orderBy: { updatedAt: 'desc' },
-      include: { replies: { orderBy: { createdAt: 'asc' } } },
-    });
+  async getUserTickets(userId: string, page?: number, limit?: number) {
+    const { skip, take, page: p, limit: l } = getPaginationParams(page, limit);
+    const [data, total] = await Promise.all([
+      this.prisma.supportTicket.findMany({
+        where: { userId },
+        skip,
+        take,
+        orderBy: { updatedAt: 'desc' },
+        include: { replies: { orderBy: { createdAt: 'asc' } } },
+      }),
+      this.prisma.supportTicket.count({ where: { userId } }),
+    ]);
+    return { data, meta: paginateMeta(total, p, l) };
   }
 
-  async getTicketDetails(ticketId: number, userId: number, userRole: string) {
+  async getTicketDetails(ticketId: string, userId: string, userRole: string) {
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id: ticketId },
       include: {
@@ -40,8 +52,8 @@ export class SupportService {
   }
 
   async replyToTicket(
-    ticketId: number,
-    userId: number,
+    ticketId: string,
+    userId: string,
     dto: ReplyTicketDto,
     isAdmin: boolean,
   ) {
@@ -66,7 +78,7 @@ export class SupportService {
     return reply;
   }
 
-  async closeTicket(ticketId: number, userId: number) {
+  async closeTicket(ticketId: string, userId: string) {
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id: ticketId },
     });
@@ -80,17 +92,24 @@ export class SupportService {
     });
   }
 
-  getAllTickets() {
-    return this.prisma.supportTicket.findMany({
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        replies: true,
-      },
-    });
+  async getAllTickets(page?: number, limit?: number) {
+    const { skip, take, page: p, limit: l } = getPaginationParams(page, limit);
+    const [data, total] = await Promise.all([
+      this.prisma.supportTicket.findMany({
+        skip,
+        take,
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          replies: true,
+        },
+      }),
+      this.prisma.supportTicket.count(),
+    ]);
+    return { data, meta: paginateMeta(total, p, l) };
   }
 
-  async assignTicket(ticketId: number, adminId: number) {
+  async assignTicket(ticketId: string, adminId: string) {
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id: ticketId },
     });
@@ -101,7 +120,7 @@ export class SupportService {
     });
   }
 
-  async updatePriority(ticketId: number, priority: any) {
+  async updatePriority(ticketId: string, priority: TicketPriority) {
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id: ticketId },
     });

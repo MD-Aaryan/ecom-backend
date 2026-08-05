@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { NewsletterService } from './newsletter.service';
 import { SubscribeDto } from './dto/subscribe.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -23,7 +23,10 @@ export class NewsletterController {
   @Get('subscribers')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  getSubscribers() {
-    return this.newsletterService.getSubscribers();
+  getSubscribers(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.newsletterService.getSubscribers(
+      page ? +page : undefined,
+      limit ? +limit : undefined,
+    );
   }
 }

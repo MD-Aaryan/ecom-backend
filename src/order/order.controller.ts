@@ -7,7 +7,6 @@ import {
   Param,
   Query,
   UseGuards,
-  Req,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -16,6 +15,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('orders')
 export class OrderController {
@@ -23,19 +23,22 @@ export class OrderController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  placeOrder(@Body() dto: CreateOrderDto, @Req() req: any) {
-    return this.orderService.placeOrder(req.user.userId, dto);
+  placeOrder(
+    @Body() dto: CreateOrderDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.orderService.placeOrder(userId, dto);
   }
 
   @Get()
   @UseGuards(JwtAuthGuard)
   getUserOrders(
-    @Req() req: any,
+    @CurrentUser('userId') userId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.orderService.getUserOrders(
-      req.user.userId,
+      userId,
       page ? +page : undefined,
       limit ? +limit : undefined,
     );
@@ -53,20 +56,23 @@ export class OrderController {
 
   @Get('track/:orderId')
   @UseGuards(JwtAuthGuard)
-  track(@Param('orderId') orderId: string, @Req() req: any) {
-    return this.orderService.trackOrder(+orderId, req.user.userId);
+  track(
+    @Param('orderId') orderId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.orderService.trackOrder(orderId, userId);
   }
 
   @Post(':id/cancel')
   @UseGuards(JwtAuthGuard)
-  cancel(@Param('id') id: string, @Req() req: any) {
-    return this.orderService.cancelOrder(+id, req.user.userId);
+  cancel(@Param('id') id: string, @CurrentUser('userId') userId: string) {
+    return this.orderService.cancelOrder(id, userId);
   }
 
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   updateStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
-    return this.orderService.updateOrderStatus(+id, dto);
+    return this.orderService.updateOrderStatus(id, dto);
   }
 }

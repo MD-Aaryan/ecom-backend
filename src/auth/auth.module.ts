@@ -5,6 +5,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { AuditLogModule } from '../audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { JwtStrategy } from './jwt.strategy';
         signOptions: { expiresIn: '15m' },
       }),
     }),
+    NotificationsModule,
+    AuditLogModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
