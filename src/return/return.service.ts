@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { UpdateReturnStatusDto } from './dto/update-return-status.dto';
 import {
@@ -14,9 +15,53 @@ import {
 
 @Injectable()
 export class ReturnService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cloudinary: CloudinaryService,
+  ) {}
 
-  async requestReturn(orderId: string, userId: string, dto: CreateReturnDto) {
+  async getReturnableOrders(userId: string) {
+    const delivered = await this.prisma.order.findMany({
+      where: { userId, status: 'DELIVERED' },
+      include: { items: { include: { product: true } }, payment: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const existingReturns = await this.prisma.returnRequest.findMany({
+      where: { userId },
+      select: { orderId: true },
+    });
+    const returnedIds = new Set(existingReturns.map((r) => r.orderId));
+
+    const now = Date.now();
+    return delivered
+      .filter((o) => {
+        if (returnedIds.has(o.id)) return false;
+        const days = Math.floor((now - o.updatedAt.getTime()) / 86400000);
+        return days <= 7;
+      })
+      .map((o) => ({
+        id: o.id,
+        total: o.total,
+        status: o.status,
+        createdAt: o.createdAt,
+        updatedAt: o.updatedAt,
+        items: o.items.map((i) => ({
+          id: i.id,
+          quantity: i.quantity,
+          price: i.price,
+          title: i.product?.title ?? 'Product',
+        })),
+        payment: o.payment,
+      }));
+  }
+
+  async requestReturn(
+    orderId: string,
+    userId: string,
+    dto: CreateReturnDto,
+    file?: { buffer: Buffer; mimetype: string; size: number },
+  ) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
     });
@@ -39,8 +84,14 @@ export class ReturnService {
     if (existing)
       throw new BadRequestException('Return already requested for this order');
 
+    let image: string | undefined;
+    if (file) {
+      const result = await this.cloudinary.uploadFile(file, 'returns');
+      image = result.url;
+    }
+
     return this.prisma.returnRequest.create({
-      data: { orderId, userId, reason: dto.reason },
+      data: { orderId, userId, reason: dto.reason, image: image ?? null },
     });
   }
 

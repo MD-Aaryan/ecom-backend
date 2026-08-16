@@ -8,7 +8,10 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ReturnService } from './return.service';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { UpdateReturnStatusDto } from './dto/update-return-status.dto';
@@ -17,19 +20,30 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { UploadedFile as MulterFile } from '../common/types/uploaded-file.type';
 
 @Controller()
 export class ReturnController {
   constructor(private returnService: ReturnService) {}
 
+  @Get('orders/returnable')
+  @UseGuards(JwtAuthGuard)
+  getReturnableOrders(@CurrentUser('userId') userId: string) {
+    return this.returnService.getReturnableOrders(userId);
+  }
+
   @Post('orders/:id/return')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('image', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
   requestReturn(
     @Param('id') id: string,
     @Body() dto: CreateReturnDto,
     @CurrentUser('userId') userId: string,
+    @UploadedFile() file?: MulterFile,
   ) {
-    return this.returnService.requestReturn(id, userId, dto);
+    return this.returnService.requestReturn(id, userId, dto, file);
   }
 
   @Get('returns')
