@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsInt,
   IsOptional,
+  IsArray,
 } from 'class-validator';
 
 export class CreateProductDto {
@@ -27,6 +28,11 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
 
   @IsOptional()
   @IsString()

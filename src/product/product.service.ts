@@ -50,7 +50,11 @@ export class ProductService {
     }
 
     const product = await this.prisma.product.create({
-      data: { ...dto, imageUrl },
+      data: {
+        ...dto,
+        imageUrl,
+        images: dto.images?.length ? dto.images : [imageUrl],
+      },
       include: { variants: true, category: true },
     });
     await this.cache.del('products:search');

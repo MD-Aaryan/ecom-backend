@@ -91,6 +91,7 @@ model Product {
   description   String
   price         Float
   imageUrl      String
+  images        String[]       @default([])
   stock         Int            @default(0)
   categoryId    String
   subcategoryId String?
